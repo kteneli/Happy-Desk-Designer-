@@ -1,0 +1,514 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Nov 17 23:26:17 2024
+
+@author: kirst
+
+CHE 120 Project
+
+Happy Desk Designers
+
+Members
+Kirsten Ticzon (KT)
+Anderson D'souza (AD)
+"""
+
+# KT: Setting up the environment
+import pygame
+import sys
+
+# KT: Initialize Pygame
+pygame.init()
+
+# AD: Setting the screen dimensions
+size = (1540, 790)
+screen = pygame.display.set_mode(size)
+pygame.display.set_caption("Happy Desk Designer")
+
+# AD: Initiallize colors
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+LIGHTBROWN = (182, 139, 64)
+TAN = (165, 126, 59)
+CREAM = (236, 218, 186)
+SOFTPINK = (236, 200, 224)
+LIGHTYELLOW = (255, 255, 204)
+GREY = (224, 224, 224)
+SOFTRED = (255, 230, 230)
+MINTGREEN = (230, 255, 230)
+PASTELBLUE = (230, 230, 255)
+SOFTYELLOW = (255, 255, 230)
+SOFTORANGE = (255, 245, 230)
+LAVENDER = (245, 230, 255)
+LIGHTRED = (189,68,68)
+
+# AD: Fonts
+title_font = pygame.font.SysFont("Roboto", 64, bold=True)
+font = pygame.font.SysFont("Roboto", 48)
+small_font = pygame.font.SysFont("Roboto", 32)
+
+# AD: Professors and their associated colors
+professors = {
+    "Pendar Mahmoudi": {"circle_color": (255, 0, 0), "background_color": SOFTRED},
+    "Milad Kamkar": {"circle_color": (0, 255, 0), "background_color": MINTGREEN},
+    "Michael Tam": {"circle_color": (0, 0, 255), "background_color": PASTELBLUE},
+    "Zino Ojogbo": {"circle_color": (255, 255, 0), "background_color": SOFTYELLOW},
+    "Jordan Hamilton": {"circle_color": (255, 165, 0), "background_color": SOFTORANGE},
+    "Matheus Azevedo": {"circle_color": (128, 0, 128), "background_color": LAVENDER},
+}
+
+# KT: Game states
+current_screen = "menu"
+character_index = 0
+selected_professor = None
+
+# KT: Button dimensions
+button_width, button_height = 240, 60
+button_start = pygame.Rect(size[0] // 2 - button_width // 2, 250, button_width, button_height)
+button_rules = pygame.Rect(size[0] // 2 - button_width // 2, 330, button_width, button_height)
+button_quit = pygame.Rect(size[0] // 2 - button_width // 2, 410, button_width, button_height)
+button_left_arrow = pygame.Rect(100, size[1] // 2, 60, 60)
+button_right_arrow = pygame.Rect(size[0] - 160, size[1] // 2, 60, 60)
+button_select = pygame.Rect(size[0] // 2 - button_width // 2, size[1] - 200, button_width, button_height)
+button_back = pygame.Rect(50, size[1] - 100, button_width, button_height)
+button_ready = pygame.Rect(size[0] // 2 - button_width // 2, size[1] - 150, button_width, button_height)
+
+# KT: List buttons for user to select on game screen
+selected_obj_list = None
+buttons_game = [pygame.Rect(40 + (i % 2) * 750, 250 + (i // 2) * 150, 700, 70) for i in range(6)]
+objects_list = ["Computer, Coffee, Rubber Ducky", 
+                "Gloves, Glasses Case, Camera", 
+                "Australian Flag, Case, Donut", 
+                "Slingbag, Calendar w/ March 19, Puzzles", 
+                "Goggles, Brazilian Flag, Wine", 
+                "Microphone, Mirror, Selfie Stick"]
+
+## Action functions
+
+# AD: This function draws text
+def draw_text(text, x, y, color=BLACK, font_type=font, centered=False):
+    text_surface = font_type.render(text, True, color)
+    text_rect = text_surface.get_rect(center=(x, y)) if centered else text_surface.get_rect(topleft=(x, y))
+    screen.blit(text_surface, text_rect)
+
+# AD: This function draws out the shape representing the buttons
+def draw_button(rect, text, color=LIGHTYELLOW, border_radius=15, font_type=font):
+    pygame.draw.rect(screen, color, rect, border_radius=border_radius)
+    draw_text(text, rect.centerx, rect.centery, centered=True, font_type=font_type)
+
+## Screens
+# KT: This function draws the main menu with the prompts for initial actions the user can take
+def display_main_menu():
+    screen.fill(CREAM)
+    # KT: recall the previously made functions, to draw text and buttons, are being called here to add visuals to the screen
+    draw_text("Happy Desk Designer", size[0] // 2, 120, centered=True, font_type=title_font)
+    draw_button(button_start, "Start Game")
+    draw_button(button_rules, "Rules")
+    draw_button(button_quit, "Quit")
+
+# KT: This function draws the rules screen
+def display_rules():
+    screen.fill(SOFTPINK)
+    draw_text("Rules", size[0] // 2, 100, centered=True, font_type=title_font)
+    # KT: a small explanation on how the game works :>
+    rules = [
+        "1. Select your favorite professor to decorate their desk!",
+        "2. Read the hints to learn more about them!",
+        "3. Select the list of desk trinkets that you think suits them best!",
+    ]
+    y_offset = 200
+    # KT: this prints out the rules one after another, in the middle of the screen
+    for rule in rules:
+        draw_text(rule, size[0] // 2, y_offset, centered=True, font_type=small_font)
+        y_offset += 60
+    draw_button(button_back, "Back", GREY)
+
+# KT: This function displays the professors and allows users to select one to decorate a desk for !
+def display_character_select():
+    global character_index
+    # KT: recall the list of professors initially made
+    professor = list(professors.keys())[character_index]
+    background_color = professors[professor]["background_color"]
+    screen.fill(background_color)
+    draw_text("Select Your Professor", size[0] // 2, 100, centered=True, font_type=title_font)
+    # KT: this draws all the select button options, the logic becomes important in the game loop as to how it cycles through the options
+    draw_button(button_left_arrow, "<")
+    draw_button(button_right_arrow, ">")
+    draw_button(button_select, "Select")
+    draw_button(button_back, "Back", GREY)
+    draw_prof(professor, size[0] // 2, size[1] // 2)
+
+# KT: This function shows the hints
+def display_hint_screen(professor):
+    background_color = professors[professor]["background_color"]
+    screen.fill(background_color)
+    draw_text(f"Hint Screen for {professor}", size[0] // 2, 100, centered=True, font_type=title_font)
+    if professor == "Pendar Mahmoudi":
+        draw_text("Hint 1: As our programming prof, a computer comes in handy", size[0] // 2, 250, centered=True, font_type=small_font)
+        draw_text("Hint 2: Hmmm a nice warm drink would be perfect", size[0] // 2, 300, centered=True, font_type=small_font)
+        draw_text("Hint 3: Remember that one class that we all got those rubber... what animal was that again?", size[0] // 2, 350, centered=True, font_type=small_font)
+    elif professor == "Milad Kamkar":
+        draw_text("Hint 1: He works with nano materials so these may come in handy", size[0] // 2, 250, centered=True, font_type=small_font)
+        draw_text("Hint 2: Lets help him out to make sure he'll never lose his glasses!", size[0] // 2, 300, centered=True, font_type=small_font)
+        draw_text("Hint 3: This semester he won a ... contest ... I can't remember what for, I have bad photographic memory...", size[0] // 2, 350, centered=True, font_type=small_font)
+    elif professor == "Michael Tam":
+        draw_text("Hint 1: Lets place the flag of his university to make it feel nostalgic!", size[0] // 2, 250, centered=True, font_type=small_font)
+        draw_text("Hint 2: Lets help him out to make sure he'll never lose his glasses!", size[0] // 2, 300, centered=True, font_type=small_font)
+        draw_text("Hint 3: Mmm a sweet treat would be perfect for the desk", size[0] // 2, 350, centered=True, font_type=small_font)
+    elif professor == "Jordan Hamilton":
+        draw_text("Hint 1: He's always wearing his slingbag!", size[0] // 2, 250, centered=True, font_type=small_font)
+        draw_text("Hint 2: I remember him mentioning his birthday...", size[0] // 2, 300, centered=True, font_type=small_font)
+        draw_text("Hint 3: Can't have a fun friday without these", size[0] // 2, 350, centered=True, font_type=small_font)
+    elif professor == "Matheus Azevedo":
+        draw_text("Hint 1: Since he loves to snowboard he should totally have this on his desk!", size[0] // 2, 250, centered=True, font_type=small_font)
+        draw_text("Hint 2: Let's add his flag to make him feel right at home", size[0] // 2, 300, centered=True, font_type=small_font)
+        draw_text("Hint 3: The desk wont be complete without a nice glass of...", size[0] // 2, 350, centered=True, font_type=small_font)
+    elif professor == "Zino Ojogbo":
+        draw_text("Hint 1: She's the easiest prof to hear because she uses this", size[0] // 2, 250, centered=True, font_type=small_font)
+        draw_text("Hint 2: Always very stylish so we cant forget to add a...", size[0] // 2, 300, centered=True, font_type=small_font)
+        draw_text("Hint 3: As our fav influencer, its important for her to have...", size[0] // 2, 350, centered=True, font_type=small_font)
+    draw_button(button_ready, "Ready", LIGHTYELLOW)
+
+# AD: this function draws the game screen
+def display_game_screen(professor):
+    screen.fill(CREAM)
+    draw_text(f"What objects do you think will be best for {professor}'s desk?", size[0] // 2, size[1] // 2 - 300, centered=True)
+    # AD: Recall the list of objects initialized earlier, this itterates through the lists and prints them
+    for i, button in enumerate(buttons_game):
+        draw_button(button, objects_list[i])
+    
+# KT: This function determines the score of the user        
+def draw_score_screen(professor, prof_list):
+    screen.fill(CREAM)
+    """ KT: This was a fun one to make!
+            This function has various if statements that associate the selected prof to 
+            the list of objects that best suit them based on the given hints.
+            
+            If the user selects the correct list, the objects get drawn onto their desk and they win!
+            
+            If the user selects the wrong one, the screen goes red and they lose:<
+            """
+    draw_text("Score Screen", size[0] // 2, 100, centered=True, font_type=title_font)
+    if professor == "Pendar Mahmoudi" and prof_list == objects_list[0]:
+        screen.fill(MINTGREEN)
+        draw_desk()
+        draw_pendar_items()
+        draw_text("Great Job!", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)
+    elif professor == "Milad Kamkar" and prof_list == objects_list[1]:
+        screen.fill(MINTGREEN)
+        draw_desk()
+        draw_kamkar_items()
+        draw_text("Great Job!", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)
+    elif professor == "Michael Tam" and prof_list == objects_list[2]:
+        screen.fill(MINTGREEN)
+        draw_desk()
+        draw_tam_items()
+        draw_text("Great Job!", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)
+    elif professor == "Jordan Hamilton" and prof_list == objects_list[3]:
+        screen.fill(MINTGREEN)
+        draw_desk()
+        draw_jordan_items()
+        draw_text("Great Job!", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)
+    elif professor == "Matheus Azevedo" and prof_list == objects_list[4]:
+        screen.fill(MINTGREEN)
+        draw_desk()
+        draw_matheus_items()
+        draw_text("Great Job!", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)   
+    elif professor == "Zino Ojogbo" and prof_list == objects_list[5]:
+        screen.fill(MINTGREEN)
+        draw_desk()
+        draw_zino_items()
+        draw_text("Great Job!", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)   
+    else:
+        screen.fill(LIGHTRED)
+        draw_text("You lost :<", size[0] // 2, size[1] // 2-200, centered=True, font_type=font)
+        draw_text("Oh no....", size[0] // 2, size[1] // 2, centered=True, font_type=font)
+        draw_text(f"{professor} wasn't too happy with this design", size[0] // 2, size[1] // 2+50, centered=True, font_type=font)
+    # KT: User can return to main menu where they can either decide to play again or exit game
+    back_button = pygame.Rect(size[0] // 2 - 120, size[1] - 100, 240, 60)
+    draw_button(back_button, "Back to Menu")
+
+## Drawings
+# AD: This function draws the professors
+def draw_prof(professor, x, y, radius=100, custom_text=None):
+    circle_color = professors[professor]["circle_color"]
+    pygame.draw.circle(screen, circle_color, (x, y), radius)
+    text = custom_text if custom_text else professor
+    draw_text(text, x, y + radius + 20, centered=True, font_type=small_font)
+    
+# AD: This function draws the desk
+def draw_desk():
+    desk_rect = pygame.Rect(size[0] // 2 - 300, size[1] // 2 - 100, 600, 200)
+    pygame.draw.rect(screen, TAN, desk_rect)
+
+    small_rect_width = 150
+    small_rect_height = 80
+    spacing = 50
+    start_x = desk_rect.x + (desk_rect.width - (3 * small_rect_width + 2 * spacing)) // 2
+    start_y = desk_rect.y + desk_rect.height // 2 - small_rect_height // 2
+    # AD: considering the rectanges are repetetive, this loop allows me to only draw it once but make it appear 3 times due to the x,y offset
+    for i in range(3):
+        small_rect = pygame.Rect(start_x + i * (small_rect_width + spacing), start_y, small_rect_width, small_rect_height)
+        pygame.draw.rect(screen, LIGHTBROWN, small_rect)
+ 
+# KT: This function draws items associated to pendar
+def draw_pendar_items():
+    # computer
+    monitor_width = 80
+    monitor_height = 50
+    base_width = 40
+    base_height = 10
+    monitor_rect = pygame.Rect(570 - monitor_width // 2, 400 - monitor_height - 10, monitor_width, monitor_height)
+    pygame.draw.rect(screen, (100, 100, 100), monitor_rect) 
+    base_rect = pygame.Rect(570 - base_width // 2, 400 - base_height // 2, base_width, base_height)
+    pygame.draw.rect(screen, (50, 50, 50), base_rect)
+    # Coffee
+    cup_width = 30
+    cup_height = 40
+    handle_radius = 10
+    cup_rect = pygame.Rect(770 - cup_width // 2, 400 - cup_height // 2, cup_width, cup_height)
+    pygame.draw.rect(screen, (255, 255, 255), cup_rect)  
+    pygame.draw.circle(screen, (255, 255, 255), (770 + cup_width // 2, 400), handle_radius) 
+    # Ducky
+    pygame.draw.ellipse(screen, (255, 223, 0), (970 - 20, 400 - 10, 40, 20))  
+    pygame.draw.circle(screen, (255, 223, 0), (970 + 15, 400 - 10), 10)  
+    pygame.draw.polygon(screen, (255, 100, 50), [(970 + 20, 400 - 10), (970 + 30, 400 - 15), (970 + 30, 400 - 5)])
+  
+# KT: This function draws items associated to kamkar
+def draw_kamkar_items():
+    # Gloves
+    glove_width = 50
+    glove_height = 60
+    glove_color = (200, 0, 0) 
+    pygame.draw.ellipse(screen, glove_color, (570 - glove_width // 2, 400 - glove_height // 2, glove_width, glove_height))
+    pygame.draw.ellipse(screen, glove_color, (570 - glove_width // 2 + 20, 400 - glove_height // 2, glove_width, glove_height))
+
+    # Glasses Case
+    case_width = 70
+    case_height = 30
+    case_color = (50, 50, 200)  
+    pygame.draw.rect(screen, case_color, (770 - case_width // 2, 400 - case_height // 2, case_width, case_height), border_radius=10)
+
+    # Camera
+    camera_body_width = 60
+    camera_body_height = 40
+    lens_radius = 15
+    lens_offset = 10
+    camera_color = (50, 50, 50)  
+    lens_color = (100, 100, 255)  
+    pygame.draw.rect(screen, camera_color, (970 - camera_body_width // 2, 400 - camera_body_height // 2, camera_body_width, camera_body_height))
+    pygame.draw.circle(screen, lens_color, (970, 400 - lens_offset), lens_radius)
+    pygame.draw.circle(screen, (255, 255, 255), (970, 400 - lens_offset), lens_radius // 2) 
+
+# KT: This function draws items associated to tam
+def draw_tam_items():
+    # Glasses Case
+    case_width = 70
+    case_height = 30
+    case_color = (150, 75, 0)  
+    pygame.draw.rect(screen, case_color, (570 - case_width // 2, 400 - case_height // 2, case_width, case_height), border_radius=10)
+
+    # Donut
+    donut_radius = 25
+    hole_radius = 10
+    donut_color = (255, 204, 153)  
+    icing_color = (255, 105, 180)  
+    pygame.draw.circle(screen, donut_color, (770, 400), donut_radius) 
+    pygame.draw.circle(screen, icing_color, (770, 400), donut_radius - 5)  
+    pygame.draw.circle(screen, LIGHTBROWN, (770, 400), hole_radius)  
+
+    # Flag of Australia
+    flag_width = 100
+    flag_height = 60
+    flag_pole_width = 5
+    flag_color = (0, 0, 255)  
+    pole_color = (139, 69, 19)  
+
+    pole_x = 950 - flag_pole_width // 2
+    flag_x = 950
+    flag_y = 400 - flag_height // 2
+    pygame.draw.rect(screen, pole_color, (pole_x, flag_y, flag_pole_width, flag_height))
+    pygame.draw.rect(screen, flag_color, (flag_x, flag_y, flag_width, flag_height))
+    union_jack_width = 40
+    union_jack_height = 30
+    union_jack_x = flag_x
+    union_jack_y = flag_y
+    pygame.draw.rect(screen, (255, 255, 255), (union_jack_x, union_jack_y, union_jack_width, union_jack_height)) 
+    pygame.draw.line(screen, (255, 0, 0), (union_jack_x, union_jack_y), (union_jack_x + union_jack_width, union_jack_y + union_jack_height), 2)  
+    pygame.draw.line(screen, (255, 0, 0), (union_jack_x + union_jack_width, union_jack_y), (union_jack_x, union_jack_y + union_jack_height), 2)
+
+    # KT: To draw the many stars on the flag, but ensuring their positions are not random, I have this list of coordinates which is itterated through in a for loop to draw to the screen
+    star_color = (255, 255, 255)
+    star_positions = [
+        (flag_x + 60, flag_y + 10),  # Star 1
+        (flag_x + 70, flag_y + 20),  # Star 2
+        (flag_x + 80, flag_y + 5),   # Star 3
+        (flag_x + 75, flag_y + 35),  # Star 4
+        (flag_x + 65, flag_y + 40)   # Star 5
+    ]
+    for pos in star_positions:
+        pygame.draw.circle(screen, star_color, pos, 3)
+
+# KT: This function draws items associated to jordan
+def draw_jordan_items():
+    # Puzzle Piece
+    puzzle_piece_center = (570, 400)  
+    pygame.draw.rect(screen, (128, 0, 128), (puzzle_piece_center[0] - 20, puzzle_piece_center[1] - 20, 40, 40))  
+    pygame.draw.circle(screen, (128, 0, 128), (puzzle_piece_center[0] - 30, puzzle_piece_center[1]), 10) 
+    pygame.draw.circle(screen, (128, 0, 128), (puzzle_piece_center[0] + 30, puzzle_piece_center[1]), 10) 
+    pygame.draw.circle(screen, (128, 0, 128), (puzzle_piece_center[0], puzzle_piece_center[1] - 30), 10) 
+    pygame.draw.circle(screen, (128, 0, 128), (puzzle_piece_center[0], puzzle_piece_center[1] + 30), 10)  
+
+    # Calendar
+    calendar_x, calendar_y = 770, 400
+    calendar_width, calendar_height = 50, 60
+    pygame.draw.rect(screen, (255, 255, 255), (calendar_x, calendar_y - calendar_height // 2, calendar_width, calendar_height)) 
+    pygame.draw.line(screen, (0, 0, 0), (calendar_x, calendar_y - calendar_height // 2), (calendar_x + calendar_width, calendar_y - calendar_height // 2), 3) 
+    pygame.draw.rect(screen, (255, 0, 0), (calendar_x, calendar_y - calendar_height // 2, calendar_width, 15))
+    font = pygame.font.Font(None, 20)
+    date_text = font.render("Mar 19", True, (0, 0, 0))  
+    screen.blit(date_text, (calendar_x + 5, calendar_y - calendar_height // 2 + 20))
+
+    # Bag
+    bag_x, bag_y = 950, 400
+    bag_width, bag_height = 40, 50
+    pygame.draw.rect(screen, (139, 69, 19), (bag_x - bag_width // 2, bag_y - bag_height // 2, bag_width, bag_height)) 
+    pygame.draw.rect(screen, (205, 133, 63), (bag_x - 15, bag_y - bag_height // 2 - 10, 30, 10))  
+    pygame.draw.line(screen, (0, 0, 0), (bag_x - 15, bag_y - bag_height // 2), (bag_x + 15, bag_y - bag_height // 2), 2)  
+    pygame.draw.circle(screen, (0, 0, 0), (bag_x, bag_y - bag_height // 2 + 5), 3) 
+
+# KT: This function draws items associated to matheus
+def draw_matheus_items():
+    # Flag of Brazil
+    flag_width = 100
+    flag_height = 60
+    flag_x, flag_y = 570, 400
+    pygame.draw.rect(screen, (0, 155, 72), (flag_x - flag_width // 2, flag_y - flag_height // 2, flag_width, flag_height))  
+    pygame.draw.polygon(screen, (255, 255, 0), [
+        (flag_x - 50, flag_y),
+        (flag_x, flag_y - 30),
+        (flag_x + 50, flag_y),
+        (flag_x, flag_y + 30)
+    ])  
+    pygame.draw.circle(screen, (0, 39, 118), (flag_x, flag_y), 15)  
+    font = pygame.font.Font(None, 4)
+    motto_text = font.render("ORDEM E PROGRESSO", True, (255, 255, 255))
+    screen.blit(motto_text, (flag_x - 20, flag_y - 5))  
+
+    # Glass of Wine
+    wine_glass_x, wine_glass_y = 770, 400
+    pygame.draw.ellipse(screen, (255, 0, 0), (wine_glass_x - 10, wine_glass_y - 40, 20, 30)) 
+    pygame.draw.ellipse(screen, (192, 192, 192), (wine_glass_x - 15, wine_glass_y - 45, 30, 40), 2)  
+    pygame.draw.rect(screen, (192, 192, 192), (wine_glass_x - 2, wine_glass_y - 10, 4, 20)) 
+    pygame.draw.circle(screen, (192, 192, 192), (wine_glass_x, wine_glass_y + 15), 10) 
+
+    # Goggles
+    goggles_x, goggles_y = 950, 400
+    pygame.draw.ellipse(screen, (192, 192, 192), (goggles_x - 30, goggles_y - 15, 25, 30))  
+    pygame.draw.ellipse(screen, (192, 192, 192), (goggles_x + 5, goggles_y - 15, 25, 30))  
+    pygame.draw.ellipse(screen, (0, 191, 255), (goggles_x - 28, goggles_y - 13, 21, 26))  
+    pygame.draw.ellipse(screen, (0, 191, 255), (goggles_x + 7, goggles_y - 13, 21, 26)) 
+    pygame.draw.line(screen, (128, 128, 128), (goggles_x - 35, goggles_y - 5), (goggles_x + 35, goggles_y - 5), 4)  
+
+# AD: This function draws items associated to zino
+def draw_zino_items():
+    # Selfie Stick
+    selfie_stick_x, selfie_stick_y = 570, 400
+    # Stick part
+    pygame.draw.rect(screen, (169, 169, 169), (selfie_stick_x - 5, selfie_stick_y - 50, 10, 100))  # Gray stick
+    # Handle part
+    pygame.draw.rect(screen, (0, 0, 0), (selfie_stick_x - 15, selfie_stick_y + 50, 30, 15))  # Black handle
+    # Phone part (rectangle)
+    pygame.draw.rect(screen, (0, 0, 0), (selfie_stick_x - 25, selfie_stick_y - 55, 50, 15))  # Phone holder
+
+    # Mirror
+    mirror_x, mirror_y = 770, 400
+    pygame.draw.rect(screen, (192, 192, 192), (mirror_x - 25, mirror_y - 50, 50, 100), 2)  # Mirror frame
+    pygame.draw.rect(screen, (0, 0, 0), (mirror_x - 5, mirror_y + 50, 10, 20))  # Mirror stand
+    pygame.draw.rect(screen, (255, 255, 255), (mirror_x - 23, mirror_y - 48, 46, 96))  # Mirror glass
+
+    # Microphone
+    mic_x, mic_y = 950, 400
+    # Microphone head
+    pygame.draw.circle(screen, (169, 169, 169), (mic_x, mic_y - 20), 20)  # Microphone head (gray)
+    # Microphone body (rectangle)
+    pygame.draw.rect(screen, (0, 0, 0), (mic_x - 5, mic_y, 10, 40))  # Microphone body (black)
+    # Stand (ellipse)
+    pygame.draw.ellipse(screen, (169, 169, 169), (mic_x - 15, mic_y + 35, 30, 10))  # Stand (gray)
+
+## Game loop
+# KT: Considering simple pygame documentation, the main game loop is a must for anything to appear on the screen and any action to have an associated consequence
+running = True
+while running:
+    # KT: This would close the program
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mouse_pos = pygame.mouse.get_pos()
+            
+            # KT: recall the initialized buttons, here the built in functions that recognize mouse clicks lead each respective button to their screen
+            if current_screen == "menu":
+                if button_start.collidepoint(mouse_pos):
+                    current_screen = "character_select"
+                elif button_rules.collidepoint(mouse_pos):
+                    current_screen = "rules"
+                elif button_quit.collidepoint(mouse_pos):
+                    # KT: since I have running = True at the beginning of the while loop, if the user clicks exit, running would now be false and the program would close
+                    running = False
+            elif current_screen == "rules" and button_back.collidepoint(mouse_pos):
+                current_screen = "menu"
+                
+            # KT: This is how itterating through choosing a prof to play is carried out:
+            elif current_screen == "character_select":
+                # KT: if the left button is clicked, it will go backwards in the list
+                if button_left_arrow.collidepoint(mouse_pos):
+                    # KT: the modulo operation allows for the index to wrap around in he list
+                    character_index = (character_index - 1) % len(professors)
+                elif button_right_arrow.collidepoint(mouse_pos):
+                    character_index = (character_index + 1) % len(professors)
+                # KT: if this is clicked, the current index of the list is assigned as the selected prof
+                elif button_select.collidepoint(mouse_pos):
+                    selected_professor = list(professors.keys())[character_index]
+                    current_screen = "hint_screen"
+                # KT: this allows user to go back (this occurs a lot in the game loop)
+                elif button_back.collidepoint(mouse_pos):
+                    current_screen = "menu"
+            elif current_screen == "hint_screen":
+                # KT: Once the user reads the hints, they can click ready and the game will begin!
+                if button_ready.collidepoint(mouse_pos):
+                    current_screen = "game"
+                elif button_back.collidepoint(mouse_pos):
+                    current_screen = "menu"
+                    
+            # KT: This accounts for the 6 list options on the game screen
+            elif current_screen == "game":
+                for i, button in enumerate(buttons_game):
+                    # KT: Whichever of the 6 lists the user chooses is then saved as selected object list so that it can determine whether or not they won
+                    if button.collidepoint(mouse_pos):
+                        selected_obj_list = objects_list[i]
+                        current_screen = "score_screen" 
+            # KT: this shows them their results
+            elif current_screen == "score_screen":
+                back_button = pygame.Rect(size[0] // 2 - 120, size[1] - 100, 240, 60)
+                if back_button.collidepoint(mouse_pos):
+                    current_screen = "menu" 
+                    
+    # KT: All of these if statements draw the actual screen that the user should be on based on their clicks and makes sure to flip the screen they were previously on so that no graphics or collidepoints overlap            
+    if current_screen == "menu":
+        display_main_menu()
+    elif current_screen == "character_select":
+        display_character_select()
+    elif current_screen == "rules":
+        display_rules()
+    elif current_screen == "hint_screen":
+        display_hint_screen(selected_professor)
+    elif current_screen == "game":
+        display_game_screen(selected_professor)
+    elif current_screen == "score_screen":
+        draw_score_screen(selected_professor, selected_obj_list)
+    pygame.display.flip()
+
+# KT: this ensure to close all the initialized environments at the beginning of the code once the while loop is running = False
+pygame.quit()
+sys.exit()
